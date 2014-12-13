@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Index of /</title>
+  </head>
+
+  <body>
+    <ul>
+      <% @entries.each do |entry| %>
+        <li><a href="/<%= entry %>"><%= entry %></a></li>
+      <% end %>
+    </ul>
+  </body>
+</html>

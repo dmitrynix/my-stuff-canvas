@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script>
+      window.onload = function() {
+        var canvas = document.getElementById("arc2")
+          , context = canvas.getContext("2d")
+        ;
+
+        context.beginPath();
+
+        context.arc(50, 50, 40, 90/180*Math.PI, 270/180*Math.PI);
+        context.arc(60, 60, 40, 90/180*Math.PI, 270/180*Math.PI, true);
+
+        context.stroke();
+      }
+    </script>
+  </head>
+
+  <body>
+    <canvas id="arc2" width="800" height="600"></canvas>
+
+    <p>Necessário reiniciar o <code>beginPath</code> antes de fazer outro
+    desenho.</p>
+  </body>
+</html>

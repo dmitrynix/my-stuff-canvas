@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script>
+      window.onload = function() {
+        var canvas = document.getElementById("star")
+          , context = canvas.getContext("2d")
+        ;
+
+        context.beginPath();
+
+        context.lineWidth = 2;
+
+        context.moveTo(75, 250);
+        context.lineTo(150, 50);
+        context.lineTo(225, 250);
+        context.lineTo(50, 120);
+        context.lineTo(250, 120);
+        context.lineTo(75, 250);
+
+        context.stroke();
+      }
+    </script>
+  </head>
+
+  <body>
+    <canvas id="star" width="300" height="300"></canvas>
+  </body>
+</html>

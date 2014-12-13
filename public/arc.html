@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script>
+      window.onload = function() {
+        var canvas = document.getElementById("arcCanvas")
+          , context = canvas.getContext("2d")
+        ;
+
+        context.beginPath();// termina quando o método fill ou stroke for chamado
+
+        //           x,  y, raio, inicio rad, termino rad
+        context.arc(50, 50, 40, 90/180*Math.PI, 270/180*Math.PI);
+        context.stroke();
+
+        context.beginPath();
+        context.arc(200, 50, 40, 90/180*Math.PI, 270/180*Math.PI, true);
+        context.fill();
+        context.stroke();
+
+        context.beginPath();
+        context.arc(300, 50, 40, 0, 2*Math.PI);
+        context.stroke();
+      }
+    </script>
+  </head>
+
+  <body>
+    <canvas id="arcCanvas" width="800" height="600"></canvas>
+  </body>
+</html>
