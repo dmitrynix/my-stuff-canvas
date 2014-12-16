@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="/js/jquery-2.1.0.min.js"></script>
+    <script>
+      function findPos(obj) {
+        var curleft = 0, curtop = 0;
+
+        if (obj.offsetParent) {
+          do {
+            curleft += obj.offsetLeft;
+            curtop += obj.offsetTop;
+          } while (obj =
+              obj.offsetParent);
+          return { x: curleft, y: curtop };
+        }
+        return undefined;
+      }
+
+      window.onload = function() {
+        $('#star').mousemove(function(e) {
+          var pos = findPos(this)
+            , x = e.pageX - pos.x
+            , y = e.pageY - pos.y
+          ;
+
+          console.log("x=", x, "; y=", y);
+        });
+      }
+    </script>
+  </head>
+
+  <body>
+    <canvas id="star" width="300" height="300"></canvas>
+    <!--
+      # pacman -S geos proj gdal
+    -->
+  </body>
+</html>
