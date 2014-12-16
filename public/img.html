@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script>
+      window.onload = function() {
+        var canvas = document.getElementById("imageCanvas")
+          , context = canvas.getContext("2d")
+          , image = new Image()
+          , explosao = new Image()
+        ;
+
+        image.src = "/images/50x50.png";
+        image.onload = function() {
+          for(var times = 1; times <= 2; times++) {
+            context.drawImage(image, times*60, 50, 50, 50);
+          }
+        }
+
+        explosao.src = "/images/explosao.png";
+        explosao.onload = function() {
+          context.drawImage(explosao,
+              80, 10, 60, 65, // area de recorte
+              20, 20, 60, 65 // desenho no canvas
+          );
+        }
+      }
+    </script>
+
+    <style media="screen" type="text/css">
+      #imageCanvas {
+        width: 400px;
+        height: 400px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <canvas id="imageCanvas" width="200" height="200"></canvas>
+  </body>
+</html>
