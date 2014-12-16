@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Save and Restore</title>
+    <script>
+      window.onload = function() {
+        var canvas = document.getElementById("myCanvas")
+          , context = canvas.getContext("2d")
+        ;
+
+        context.fillStyle = 'green';
+        context.fillRect(50, 50, 25, 25);
+
+        context.save();
+
+        context.fillStyle = 'purple';
+        context.fillRect(100, 50, 25, 25);
+
+        context.restore();
+
+        context.fillRect(150, 50, 25, 25);
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="myCanvas" width="800" height="600"></canvas>
+  </body>
+</html>
