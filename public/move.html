@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title></title>
+    <script>
+      window.onload = function() {
+        var canvas = document.getElementById("move")
+          , context = canvas.getContext("2d")
+          , posicao = 0
+        ;
+
+        function desenharPersonagem() {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          context.fillRect(posicao, 100, 20, 50);
+        }
+
+        document.addEventListener("keydown", function(event) {
+          if (event.keyCode == 37) { // seta esquerda
+            posicao -= 10;
+          } else if(event.keyCode == 39) { // seta direita
+            posicao += 10;
+          }
+
+          desenharPersonagem();
+        });
+
+        desenharPersonagem();
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="move" width="800" height="600"></canvas>
+  </body>
+</html>
