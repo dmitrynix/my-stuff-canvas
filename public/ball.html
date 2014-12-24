@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title></title>
+  <script>
+    window.onload = function() {
+      var canvas = document.getElementById("ball")
+        , context = canvas.getContext("2d")
+        , x = 20
+        , y = 100
+        , raio = 5
+        , date = new Date()
+        , anterior = date.getTime()
+        , agora = date.getTime()
+        , velocidade = 20
+      ;
+
+      requestAnimationFrame(mexerBola);
+
+      function mexerBola() {
+        var agora = new Date().getTime()
+          , decorrido = agora - anterior
+        ;
+
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        context.beginPath();
+        context.arc(x, y, raio, 0, Math.PI*2);
+        context.fill();
+
+        x += velocidade * decorrido / 1000;
+
+        anterior = agora;
+        requestAnimationFrame(mexerBola);
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="ball" width="800" height="600"></canvas>
+</body>
+</html>
