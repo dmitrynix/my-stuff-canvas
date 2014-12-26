@@ -24,7 +24,7 @@
             , y = e.pageY - pos.y
           ;
 
-          console.log("x=", x, "; y=", y);
+          $("#position").html("x=" + x + "; y=" + y);
         });
       }
     </script>
@@ -32,6 +32,7 @@
 
   <body>
     <canvas id="star" width="300" height="300"></canvas>
+    <div>Current mouse position: <span id="position"></span></div>
     <!--
       # pacman -S geos proj gdal
     -->
