@@ -6,7 +6,7 @@
 
   <body>
     <ul>
-      <% @entries.each do |entry| %>
+      <% @entries.sort.each do |entry| %>
         <li><a href="/<%= entry %>"><%= entry %></a></li>
       <% end %>
     </ul>
