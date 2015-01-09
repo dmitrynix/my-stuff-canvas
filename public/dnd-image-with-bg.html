@@ -36,9 +36,6 @@
         * This draws the image to the canvas
         */
         function Draw() {
-          // FIXME: this cause redraw of canvas
-          canvas.width = canvas.width;
-
           //Draw a red rectangle around the image
           if (dragging) {
             context.strokeStyle = 'red';
@@ -70,12 +67,16 @@
         context.stroke();
         // end
 
-        canvas.onclick = function(e) {
-          if (dragging) {
-            dragging = false;
-            Draw();
-            return;
-          }
+        function onmouseup(e) {
+          dragging = false;
+        }
+
+        function onmousedown(e) {
+          dragging = true;
+          //if (dragging) {
+          //  Draw();
+          //  return;
+          //}
 
           var pos = findPos(this)
             , mouseXY = [e.pageX - pos.x, e.pageY - pos.y]
@@ -86,7 +87,6 @@
               && mouseXY[1] > imageXY.y
               && mouseXY[1] < (imageXY.y + image.height)) {
 
-            dragging       = true;
             originalMouseX = mouseXY[0];
             originalMouseY = mouseXY[1];
             offsetX        = mouseXY[0] - imageXY.x;
@@ -94,7 +94,7 @@
           }
         }
 
-        canvas.onmousemove = function(e) {
+        function onmousemove(e) {
           if (dragging) {
             var pos = findPos(this)
               , mouseXY = [e.pageX - pos.x, e.pageY - pos.y]
@@ -107,11 +107,16 @@
             imageXY.x = originalMouseX + diffX - offsetX;
             imageXY.y = originalMouseY + diffY - offsetY;
 
+            context.clearRect(0, 0, canvas.width, canvas.height);
             Draw();
 
             e.stopPropagation();
           }
         }
+
+        canvas.onmousemove = onmousemove;
+        canvas.onmousedown = onmousedown;
+        canvas.onmouseup = onmouseup;
       }
     </script>
   </body>
