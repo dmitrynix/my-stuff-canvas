@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Drag and Drop image</title>
+    <script src="/js/jquery-2.1.1.min.js"></script>
+    <style>
+      canvas {
+        background:url(/images/Landscape.png);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- based on
+      http://www.rgraph.net/blog/2013/january/an-example-of-html5-canvas-drag-and-drop.html
+    -->
+    <canvas id="myCanvas" width="800" height="490"></canvas>
+
+    <script>
+      window.onload = function () {
+        function findPos(obj) {
+          var curleft = 0, curtop = 0;
+
+          if (obj.offsetParent) {
+            do {
+              curleft += obj.offsetLeft;
+              curtop += obj.offsetTop;
+            } while (obj =
+                obj.offsetParent);
+            return { x: curleft, y: curtop };
+          }
+          return undefined;
+        }
+
+        /**
+        * This draws the image to the canvas
+        */
+        function Draw() {
+          // FIXME: this cause redraw of canvas
+          canvas.width = canvas.width;
+
+          //Draw a red rectangle around the image
+          if (dragging) {
+            context.strokeStyle = 'red';
+            context.strokeRect(imageXY.x - 2.5,
+                imageXY.y - 2.5,
+                image.width + 5,
+                image.height + 5);
+          }
+          // Now draw the image
+          context.drawImage(image, imageXY.x, imageXY.y);
+        }
+
+        var canvas = document.getElementById("myCanvas")
+          , context = canvas.getContext('2d')
+          , imageXY  = { x: 5, y: 5 }
+          , image = new Image()
+          , dragging = false
+          , offsetX = 0
+          , offsetY = 0
+          , originalMouseX
+          , originalMouseY
+        ;
+
+        image.src = "/images/50x50.png";
+        image.onload = Draw;
+        // start
+        context.beginPath();
+        context.arc(50, 50, 40, 90/180*Math.PI, 270/180*Math.PI);
+        context.stroke();
+        // end
+
+        canvas.onclick = function(e) {
+          if (dragging) {
+            dragging = false;
+            Draw();
+            return;
+          }
+
+          var pos = findPos(this)
+            , mouseXY = [e.pageX - pos.x, e.pageY - pos.y]
+          ;
+
+          if (   mouseXY[0] > imageXY.x
+              && mouseXY[0] < (imageXY.x + image.width)
+              && mouseXY[1] > imageXY.y
+              && mouseXY[1] < (imageXY.y + image.height)) {
+
+            dragging       = true;
+            originalMouseX = mouseXY[0];
+            originalMouseY = mouseXY[1];
+            offsetX        = mouseXY[0] - imageXY.x;
+            offsetY        = mouseXY[1] - imageXY.y;
+          }
+        }
+
+        canvas.onmousemove = function(e) {
+          if (dragging) {
+            var pos = findPos(this)
+              , mouseXY = [e.pageX - pos.x, e.pageY - pos.y]
+            ;
+
+            // Work how far the mouse has moved since the mousedon event was triggered
+            var diffX = mouseXY[0] - originalMouseX;
+            var diffY = mouseXY[1] - originalMouseY;
+
+            imageXY.x = originalMouseX + diffX - offsetX;
+            imageXY.y = originalMouseY + diffY - offsetY;
+
+            Draw();
+
+            e.stopPropagation();
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
