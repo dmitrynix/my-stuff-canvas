@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+      canvas  {
+        border: 1px solid black; 
+        position: fixed;
+      }
+    </style>
+  </head>
+  <body>
+
+    <!--
+      From: http://jsfiddle.net/wriddo/QGayk/
+    -->
+    <!-- copyright A. Bourne all rights reserved 1st June 2014 email:
+      a.b@post.com -->
+      <canvas id="app_wallpaper"></canvas>
+      <canvas id="app_canvas"></canvas>
+      <canvas id="test_canvas" style="display: none"></canvas>
+
+      <script>
+var canvas = document.getElementById('app_canvas'); 
+var wallpaper = document.getElementById('app_wallpaper'); 
+var testCanvas = document.getElementById('test_canvas'); 
+function getWindowSize(){ // gets current window dimensions 
+  var w = window, d = document, e = d.documentElement, g = d.getElementsByTagName('body')[0], 
+  width = w.innerWidth || e.clientWidth || g.clientWidth, 
+  height = w.innerHeight|| e.clientHeight|| g.clientHeight;
+  return {'width': width, 'height': height}
+}
+function clearCanvas(canvas_to_clear){ // clear entire canvas by setting white background. Default canvas is canvas(!), i.e. not wallpaper 
+  canvas_to_clear = canvas_to_clear || canvas; 
+  var width = canvas_to_clear.getAttribute('width'); 
+  var height = canvas_to_clear.getAttribute('height'); 
+  var context = canvas_to_clear.getContext('2d'); 
+  context.clearRect(0, 0, width, height); 
+} 
+function fitCanvas(canvas_to_fit){ // fit canvas to screen dimensions. Default canvas is canvas(!), i.e. not wallpaper 
+  canvas_to_fit = canvas_to_fit || canvas; 
+  var dimensions = getWindowSize(); 
+  canvas_to_fit.setAttribute('width', dimensions.width); // setting node object property cvs.style.width distorts resolution and creates stretched image with reduced resolution, so must set HTML attributes to avoid this 
+  canvas_to_fit.setAttribute('height', dimensions.height); 
+  canvas_to_fit.style.left = '0px' 
+    canvas_to_fit.style.top = '0px'
+}
+function fitCanvasses(){
+  var canvasses = document.getElementsByTagName('CANVAS'); 
+  for (var index = 0; index < canvasses.length; index ++){
+    var canvas = canvasses[index]; 
+    fitCanvas(canvas); 
+  }
+} 
+fitCanvasses(); 
+window.onresize = function(){ // resize canvas upon window resize all canvasses 
+  fitCanvasses(); 
+  setWallpaper(); 
+}; 
+
+
+// Image handling functions 
+var loadCallback = function(image) { // Record loaded image in ImageHandler.images if callback given an argument image then use that, if not then use image that called this function instead 
+  if(image.constructor !== HTMLImageElement){ // if callback an onload event (i.e. parameter is an Event not an Image)
+    image = this // image is 'this' object that called this function as a method 
+      //alert('loadCallback: not HTMLImageElement. this = ' + this); 
+  };
+  image.name = image.name || '#image_' + (document.images && document.images.length) || '#image_0'; 
+
+  ImageHandler.images[image.name] = image // record image by name string  
+    image.imageOnLoadFunction && image.imageOnLoadFunction(); // execute specified action upon image load if function exists 
+}
+ImageHandler = function(){}
+ImageHandler.images = {}; 
+//ImageHandler.AVAILABLE_IMAGE_NUMBER = 0; 
+ImageHandler.load = function(image_name_to_src_mapping, onLoadFunction){ // name is optional, default format: name = '#image' + image_number 
+  for (var image_name in image_name_to_src_mapping){
+    var image = new Image(); 
+    image.src = image_name_to_src_mapping[image_name] // begin loading image 
+      image.name = image_name; 
+    //image.crossOrigin = "Anonymous"//"Access-Control-Allow-Origin";
+    image.imageOnLoadFunction = onLoadFunction // image onload function with this = image 
+      if(image.complete) { //check if image was already loaded by the browser
+        loadCallback(image);
+      }else {
+        image.onload = loadCallback // image onload function 
+      }
+  }
+} 
+function setWallpaper(image_name){ 
+  if(!image_name){ // reset current wallpaper image on canvas, i.e. after canvas resizing 
+    var image_node = wallpaper.image_node; 
+    var context = wallpaper.getContext("2d"); 
+    context.drawImage(image_node, 0, 0); 
+    return 
+  }
+  var image_node = ImageHandler.images[image_name]; 
+  wallpaper.image_node = image_node; 
+  var context = wallpaper.getContext("2d"); 
+  context.drawImage(image_node, 0, 0);  
+}
+
+
+
+function isObjectLiteral(object) { // tests if _obj is an object literal or not returning true or false 
+  return object && object.constructor === Object 
+}
+
+
+function clone(obj) { // (shallow) clones object literal so changes to cloned object are not reflected in original version. However attributes which are objects are NOT cloned so that they can be references which can be changed  
+  if (null == obj || "object" != typeof obj) return obj; 
+  var copy = new obj.constructor(); // make a blank copy of obj using it's constructor function 
+  for (var attr in obj) {
+    var sub_object = obj[attr]; 
+    if (isObjectLiteral(sub_object)/*sub_object.constructor === Object*/){copy[attr] = clone(sub_object)}
+    else if (obj.hasOwnProperty(attr)){
+      copy[attr] = sub_object;
+    }; 
+  }
+  return copy;
+}
+
+
+
+function getPathValues(copyObj, shadow_paths) { // generates copy (NOT clone) of object structure but only for attributes that occur in shadow_paths = object literal containing []s or {}s only 
+  if (typeof shadow_paths == 'function'){ // ignore functions - shouldn't be encountered anyway 
+    alert('error: function found in shadow_paths - incorrect format!'); 
+    return
+  }
+
+  var copy; 
+
+  if (typeof shadow_paths != 'object'){ // a primitive found. Return corresponding primitive equal to copyObj (should be a primitive too) untouched 
+    if (typeof copyObj == 'object'){alert('error: shadow_paths = ' + shadow_paths + ' a primitive but copyObj = ' + copyObj + ' not!')}
+    copy = copyObj 
+      return copy 
+  }
+
+  if (shadow_paths.constructor === Array){ // if shadow_paths an array [] 
+    copy = []; 
+    try{
+      for (var index = 0; index < shadow_paths.length; index ++){ 
+        var this_path = path + index + ', '; 
+
+        var sub_shadow_paths = shadow_paths[index]; 
+        var subCopyObj = copyObj[index]; 
+
+        if(subCopyObj == undefined){ // if no corresponding attribute in copyObj then skip 
+          continue
+        }
+
+        if (sub_shadow_paths === null){ // CONVENTION: if shadow path array element left null, then make corresponding copy element null 
+          copy.push(null); 
+          continue 
+        }            
+
+        copy.push(getPathValues(subCopyObj, sub_shadow_paths, this_path)); 
+      }
+    }catch(er){alert(er + ';\n\npath = ' + path)}
+  }
+  else if (shadow_paths.constructor === Object){ // else an object literal {} 
+    copy = {}; 
+
+    for (var attribute_name in shadow_paths){ 
+      var this_path = path + attribute_name + ', '; 
+
+      var sub_shadow_paths = shadow_paths[attribute_name]; 
+      var subCopyObj = copyObj[attribute_name]; 
+
+      if (subCopyObj == undefined){ // if no corresponding attribute in copyObj then skip 
+        continue
+      }
+
+      copy[attribute_name] = getPathValues(subCopyObj, sub_shadow_paths, this_path); 
+    }
+  }
+  return copy;
+}
+
+function setPathValues(obj, paths, path){
+  path = path || ''; 
+  if (paths.constructor === Object){
+    //alert('{}'); 
+    for (var attribute_name in paths){
+      if (attribute_name in obj) {
+        var test = typeof paths[attribute_name] == 'object'; 
+
+        if(typeof paths[attribute_name] == 'object'){
+          setPathValues(obj[attribute_name], paths[attribute_name])
+        }
+        else{ 
+          obj[attribute_name] = paths[attribute_name]; 
+        }
+      }
+      else {
+        //alert('not in object'); 
+      }
+    }
+  }
+  if (paths.constructor === Array){
+    //alert('[]'); 
+    for (var index = 0; index < paths.length; index ++){
+      if (obj[index] != null && paths[index] != null && paths[index] != undefined){ // in array 
+
+        if(typeof paths[index] == 'object'){
+          //alert('about to setJSON(obj[index], paths[index])')
+          setPathValues(obj[index], paths[index])
+        }
+        else{ // setting to paths[index] 
+          obj[index] = paths[index]; 
+        }
+      }
+      else { // not in array 
+      }
+    }
+  }
+  return obj 
+}
+
+
+
+
+// event listeners for mouse drag and drop 
+function dragAndDropTouchStart(x, y){
+  if (!this){alert('dragAndDropTouchStart(x, y): no instance specified in function!'); return}
+  if(this.dragStart && this.dragAndDropTouchEnd){
+    this.dragAndDropTouchEnd(x, y); 
+  }
+  this.dragStart = true; 
+  this.highlight(); 
+}
+
+
+function dragAndDropTouchMove(x, y){ 
+  if (!this){alert('dragAndDropTouchMove(x, y): no instance specified in function!'); return} 
+  if (!this.dragStart){return} 
+  this.touchPoint = this.touchPoint || [x, y]; 
+  this.displacement = [x - this.touchPoint[0], y - this.touchPoint[1]]; 
+  this.touchPoint = [x, y] // set new coord of touch point 
+    // translate instance coordinates 
+    this.translate(this.displacement[0], this.displacement[1]); 
+} 
+function dragAndDropTouchEnd(x, y){
+  if (!this){alert('dragAndDropTouchStart(x, y): no instance specified in function!'); return}
+  this.dragStart = false; 
+  this.unhighlight(); 
+  this.touchPoint = null; 
+}
+
+function enableDraggable(instance){ // dress instance with event functions to make draggable 
+  instance.oldEventFunctions = {'touchstart': instance.touchstart, 'touchmove': instance.touchmove, 'touchend': instance.touchend} // record any event functions for reinstatement later 
+  instance.touchstart = dragAndDropTouchStart; 
+  instance.touchmove = dragAndDropTouchMove; 
+  instance.touchend = dragAndDropTouchEnd; 
+}
+
+function disableDraggable(instance){
+  if (instance.oldEventFunctions){
+    instance.touchstart = instance.oldEventFunctions['touchstart']; 
+    instance.touchmove = instance.oldEventFunctions['touchmove']; 
+    instance.oldEventFunctions['touchend']; 
+    instance.oldEventFunctions = null; 
+  }
+} 
+
+// morphing functions 
+// morphing motion-styles 
+motionStyles = { // custom morphing motion styles set in argument parameter motionStyleFunction of getMorphAnimationFunction function, default is linear (extrapolation_parameter = time_parameter)
+  'cosine': function(extrapolation_parameter){ 
+    var value = (1 - Math.cos(extrapolation_parameter*Math.PI))/2; 
+    return value
+  }, 
+
+  'getDampedHarmonic': function(oscillations, damping){ // damped SHM style, where oscillations = oscillations over morph time, with under-damping (0 <= damping < 1) 
+    var damping_factor = damping/Math.sqrt(1 - damping*damping); 
+    var oscillations_factor = 2*Math.PI*oscillations; 
+
+    return function(extrapolation_parameter){
+      var value = 1 - Math.exp(-damping_factor*oscillations_factor*extrapolation_parameter)*(Math.cos(oscillations_factor*extrapolation_parameter) + damping_factor*Math.sin(oscillations_factor*extrapolation_parameter)); 
+      return value 
+    }
+  }
+};  
+
+function getMorphAnimationFunction(endState, duration, motionStyleFunction){ // creates function(instance) to animate instance properties. motionStyleFunction (default linear) adds style to morphing motion default is linear 
+  return function morphAnimationFunction(instance){
+
+    var status_div = document.getElementById('status'); 
+
+    if (!instance.animation.play){return} // if play is not set to true 
+
+    instance.animation.endState = instance.animation.endState || endState; 
+
+    if (!instance.animation.startState){
+      instance.animation.startState = getPathValues(instance, instance.animation.endState); 
+    }
+
+    var animation = instance.animation; 
+
+    var time = (new Date()).getTime()/1000 // epoch time in seconds since 1/1/1970 
+      animation.start_time = animation.start_time || time; 
+    animation.time_elapsed = time - animation.start_time; 
+    animation.start_coord = animation.start_coord || instance.coordinate; 
+
+    var time_parameter = (time - animation.start_time)/duration; 
+    var extrapolation_parameter = time_parameter; // linear motion style 
+    if (motionStyleFunction){
+      extrapolation_parameter = motionStyleFunction(time_parameter);
+    }
+
+    instance.animation.extrapolatedState = extrapolate(instance.animation.startState, instance.animation.endState, extrapolation_parameter); 
+    setPathValues(instance, instance.animation.extrapolatedState); 
+
+    if (time_parameter > 1){
+      animation.play = false; 
+    }                    
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function setPoints(points, setFunction, transformedPointsArray){ // setPoints(setFunction(point)) function returns array of transformed points [setPoint0 = setFunction(point0), setPoint1 = setFunction(point1), ...] 
+  setFunction = setFunction || function(point){return point} // for no transformation specified then use identity as default 
+  transformedPointsArray = transformedPointsArray || []; 
+
+  if (points instanceof Point){ // if a single point then append transformed point to array 
+    var transformedPoint = setFunction(points); 
+    transformedPointsArray.push(transformedPoint); 
+  }
+  else if (points instanceof Array){
+    for (var point_index = 0; point_index < points.length; point_index ++){
+      var point = points[point_index]; 
+      var transformedPoint = setFunction(point); 
+      transformedPointsArray.push(transformedPoint); 
+    }
+  }
+  else if (points.constructor === Object){
+    for (var attribute_name in points){
+      var attribute = points[attribute_name]; 
+      var subArray = setPoints(attribute, setFunction, transformedPointsArray); 
+      transformedPointsArray = transformedPointsArray.concat(subArray); 
+    }
+  }
+
+  return transformedPointsArray 
+}  
+
+function initialise(instance, objectLiteralsTuple){ // initialise instance attributes. Sets instance attributes as copies of those specified by object literals in objectLiteralsTuple (arbitrary in number) in order they are specified from left to right, thus initialising instance attributes. 
+  if (!arguments){return}
+  for(var n = 1; n < arguments.length; n ++){ // loop through object literals
+    var objectLiteral = arguments[n]; 
+    if (!objectLiteral){continue}
+    for(var attribute_name in objectLiteral){ 
+      var attribute = objectLiteral[attribute_name]; 
+      if (isObjectLiteral(attribute)){
+        instance[attribute_name] = instance[attribute_name] || {}; // if no attribute to override then create new empty attribute 
+        initialise(instance[attribute_name], attribute); 
+      }
+      else{ 
+        instance[attribute_name] = clone(attribute); 
+      }
+    }
+  } 
+}
+
+
+
+
+
+function getZIndex(instance){ // returns zIndex of instance 
+  var instances = Geometry.instances; 
+  for (var zIndex = 0; zIndex < instances.length; zIndex ++){ 
+    var test_instance = instances[zIndex]; 
+    if (instance === test_instance){
+      return zIndex 
+    }
+  } 
+  return 
+}; 
+
+function bringToFront(instance){ // function to move instance to end of instances array so that when rendered it is on top of all other instances 
+  var zIndex = getZIndex(instance); 
+  var removed_instance = Geometry.instances.splice(zIndex, 1); // remove instance from zIndex array and record it 
+  Geometry.instances.push(instance); // add to top of zIndex array 
+}
+
+function constructorFunction(instance, objectLiteral){ // Constructor function to be used by all classes. Records all created instances in array attribute of constructor and initialises instance attributes according to constuctor default attributes then overrides with attribute values specified by objectLiteral. 
+  objectLiteral = objectLiteral || {}; 
+
+  // record newly created instance in Geometry.instances Array object 
+  var constructor = instance.constructor; // get constructor class for this instance 
+  // if no instances of this class defined then initialise empty array of them 
+  constructor.instances = constructor.instances || []; 
+  constructor.instances.push(instance) // record all instances in array 
+    Geometry.instances = Geometry.instances || [] // if no subclass Geometry or subclass instances recorded then initialise array of them 
+    Geometry.instances.push(instance) // record this subclass instance of this subclass 
+
+    // set instance attributes to constructor default attributes then override with those given by instantiation parameter objectLiteral 
+    initialise(instance, constructor.defaultAttributes, objectLiteral) // set default attributes then objectLiteral's attributes to instance of class 
+
+    if (instance.points){ // bring any defining points to front on instance in zIndex 
+      setPoints(instance.points, function(point){bringToFront(point)})
+    }
+
+  if (instance.render) {instance.render(); } // draw if method is available 
+} 
+
+
+
+
+
+
+
+
+
+// define Geometry, base 'class' 
+function Geometry(objectLiteral){ 
+  constructorFunction(this, objectLiteral); 
+
+  this.destroy = function () { // remove record of instance 
+    var i = 0; 
+    while (this.constructor.instances[i] !== this){i++}; 
+    this.constructor.instances.splice(i, 1); 
+  }; 
+} 
+// Geometry class static methods and variables 
+// class variables 
+Geometry.defaultAttributes = {
+  'style': {
+    'fillStyle': '#333', 
+    'strokeStyle': '#000', 
+    'lineWidth': '50', 
+    'shadowBlur': '0',
+    'shadowColor': 'white'
+  }, 
+
+  'highlightStyle': {
+    'strokeStyle': 'lime', 
+    'shadowBlur': '30',
+    'shadowColor': 'white'    
+  }
+} 
+// Geometry class methods 
+
+Geometry.render = function(){ // render all instances afresh on canvas in order of zIndex 
+  var instances = Geometry.instances; 
+  if (!instances){alert('no subclasses of Geometry class to render!');}
+  clearCanvas(); 
+  for (var zIndex = 0; zIndex < instances.length; zIndex ++){
+    var instance = instances[zIndex]; 
+    instance.render(); 
+  }
+} 
+Geometry.instance_with_focus = undefined; 
+Geometry.instanceFromPoint = function(relX, relY, event_handler_name){ // if constructor contains method contains then returns array of geometries which bound point (relX, relY) 
+  var instance; 
+  if (Geometry.instance_with_focus){ // if an instance currently has focus 
+    instance = Geometry.instance_with_focus; 
+  }
+  else{ // find topmost instance 
+    for (var zIndex = Geometry.instances.length - 1; zIndex >= 0; zIndex--){ // loop from topmost instance downwards 
+      var instance = Geometry.instances[zIndex]; 
+      if (!instance.contains){alert('no contains method defined for class with constructor: ' + constructor); return}//alert('no contains method defined for this class!')
+      var isInsideInstance = instance.contains(relX, relY); 
+      if (isInsideInstance){ // if bounding instance found 
+        Geometry.instance_with_focus = instance; // record newly focussed instance 
+        break; 
+      }
+      instance = false; // in case no instance found then 
+    }
+  }
+  if (!canvas.currently_touching){ // if touchend has occurred on canvas then register this in Geometry instance 
+    instance.event_name == 'touchend'; 
+    Geometry.instance_with_focus = undefined; 
+    return
+  }
+  var eventHandler = instance && instance[event_handler_name]// && instance == canvas.instance_with_focus; 
+    if (eventHandler){ 
+      instance[event_handler_name](relX, relY) // handle event for given instance passing instance as this object to function 
+        instance.event_name = event_handler_name 
+    }
+  return Geometry.instance_with_focus 
+}
+Geometry.enableDraggable = function(){ // make all subclasses of Geometry draggable 
+  var subclasses = Geometry.subclasses; 
+  if (!subclasses){alert('no subclasses of Geometry class to make draggable!');}
+  for (var subclass_name in subclasses){
+    var subclass = subclasses[subclass_name]; 
+    subclass.enableDraggable(); 
+  }
+} 
+Geometry.disableDraggable = function(){ // make all subclasses of Geometry draggable 
+  var subclasses = Geometry.subclasses; 
+  if (!subclasses){alert('no subclasses of Geometry class to make draggable!');}
+  for (var subclass_name in subclasses){
+    var subclass = subclasses[subclass_name]; 
+    subclass.disableDraggable(); 
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+function createSubClass(objectLiteral){ // creates new class with parameters: objectLiteral = {'class_name': class_name, 'defaultAttributes': static variable default attributes for class which override inherited Geometry.defaultAttributes} 
+  var class_name = objectLiteral.class_name; 
+  var defaultAttributes = objectLiteral.defaultAttributes || {}; 
+  window[class_name] = function(objectLiteral){ // define new class constructor 
+    constructorFunction(this, objectLiteral);
+  }
+  var NewClass = window[class_name]; 
+  // define class variables 
+  NewClass.defaultAttributes = clone(Geometry.defaultAttributes); // firstly inherit default attributes from Geometry class 
+  initialise(NewClass.defaultAttributes, defaultAttributes); // then override class default attributes if specified by objectLiteral.defaultAttributes 
+  NewClass.className = class_name; 
+
+  // define class methods 
+  // subClass.instancesFromPoint returns array of subclass instances bounding point (x, y) using overridden instance.contains(relX, relY) method 
+  NewClass.instancesFromPoint = function(x, y, event_handler_name){ 
+    return instancesFromPoint(class_name , x, y, event_handler_name)
+  }; 
+
+  // subClass.draw renders all class instances afresh 
+  NewClass.draw = function(){ 
+    var instances = NewClass.instances; 
+    if (!instances){return}; 
+    for (var instance_index = 0; instance_index < instances.length; instance_index ++){ 
+                               var instance = instances[instance_index]; 
+                               if (!instance.draw){alert("no draw method defined for " + NewClass.class_name + " class!"); return}; 
+                               instance.draw(); 
+                               }; 
+                               }; 
+                               // record subclasses in Geometry superclass namespace 
+                               Geometry.subclasses = Geometry.subclasses || {}; 
+                               Geometry.subclasses[class_name] = NewClass; 
+                               // subclass.enableDraggable() method makes all members of subclass draggable 
+                               NewClass.enableDraggable = function(){ 
+                               var instances = NewClass.instances; 
+                               if (!instances){return}; 
+                               for (var instance_index = 0; instance_index < instances.length; instance_index ++){ 
+                               var instance = instances[instance_index]; 
+                               enableDraggable(instance); 
+                               }
+                               }; 
+
+                               NewClass.extrapolate = function(Class){ // creates and returns extrapolated instance between instances startState, endState 
+                               return function(startState, endState, extrapolation_parameter){
+                               var extrapolatedState = new Class(); 
+
+                               for (var attribute_name in startState){
+                               extrapolatedState[attribute_name] = extrapolate(startState[attribute_name], endState[attribute_name], extrapolation_parameter); 
+                               }
+                               return extrapolatedState 
+                               }
+                               }(NewClass)
+
+                               // highlight method: toggle highlighted appearance as specified by this.highlightedStyle settings 
+
+                               NewClass.prototype.highlight = function(){ 
+                               if (this.oldStyle){ /*if already highlighted*/ 
+                               return 
+                               }; 
+                               this.oldStyle = clone(this.style); 
+                               initialise(this.style, this.highlightStyle); 
+                               }; 
+                               NewClass.prototype.unhighlight = function(){ 
+                               if (!this.oldStyle){ /*if not highlighted*/ 
+                               return 
+                               }; 
+                               this.style = clone(this.oldStyle); 
+                               this.oldStyle = null; 
+                               }; 
+                               // define instance methods 
+
+                               NewClass.prototype.getZIndex = function(){ // bottom of stack: int zIndex = 0 
+                               getZIndex(this); 
+                               } 
+
+                               NewClass.prototype.bringToFront = function(){  // method to move instance to end of instances array so that when rendered it is on top of all other instances 
+                               bringToFront(this); 
+                               }
+
+                               // un-overridden draw method 
+                               NewClass.prototype.draw = function(){alert("Draw method is not overridden! Don't know how to draw instances of " + this.constructor.className + " class!"); }; 
+
+// instance.render() method sets canvas's context[style_property] = instance.style[style_property] for all style properties in instance style and draws 
+
+                               NewClass.prototype.render = function(canvasToUse){ // default canvasToUse is canvas
+                               if (this.animation && this.animation.animationFunction){ // if animation object and animation function exists for instance  
+                               this.animation.animationFunction(this); // execute animation function given reference to this instance a
+                               }
+
+                               var context = (canvasToUse || canvas).getContext("2d"); 
+
+                               var classDefaultStyle = this.constructor.defaultAttributes.style
+                               var style = this.style; 
+
+                               initialise(context, classDefaultStyle, style); 
+
+                               // if image_source string specified then set image as fillStyle property 
+                               var image_name = (canvasToUse != testCanvas) && this.image && this.image.name // image object name in ImageHandler object. NB DON'T draw image for testCanvas because sampling pixel makes cross-origin image 'tainted' and produces security error 
+                               var image = image_name && ImageHandler.images[image_name]
+                               if (image){ 
+                               var pattern = context.createPattern(image, "no-repeat"); 
+                               context.fillStyle = pattern; 
+                               }
+                               this.draw(context); 
+                               }
+
+NewClass.prototype.destroy = function(){ // remove record of instance in Geometry.instances[] and NewClass.instances[] 
+// remove record in NewClass.instances 
+var index = 0; 
+while (this.constructor.instances[index] !== this){ // get position of instance in NewClass.instances[]
+index++
+}; 
+if(this.constructor.instances[index] === this){
+this.constructor.instances.splice(index, 1) // remove 
+}
+// remove record in Geometry.instances 
+var index = 0; 
+while (Geometry.instances[index] !== this){ // get position of instance in NewClass.instances[]
+index++
+}; 
+if(Geometry.instances[index] === this){
+Geometry.instances.splice(index, 1) // remove 
+}        
+}
+
+// instance.morph(endState, duration, motionStyleFunction) morphs instance on canvas to new state, in time duration, in style given by motionStyleFunction (choices given in motionStyles object: 'cosine', 'dampedHarmonic(oscillations, damping)', default is linear motion). endState is object specifying attribute paths to morph simultaneously with {}s and []s specifying instance attributes to end with, currenty these can be Number, Array objects.
+
+NewClass.prototype.morph = function(endState, duration, motionStyleFunction){ 
+var morphFunction = getMorphAnimationFunction(endState, duration, motionStyleFunction); 
+this.animation = {} // reset any animation currently ongoing or just initialise animation object 
+this.animation.animationFunction = morphFunction; 
+this.animation.play = true; 
+}
+// instance.setPoints(setFunction(point)) method returns array of transformed points [setPoint0 = setFunction(point0), setPoint1 = setFunction(point1), ...] of all defining points for instance stored in instance.points object 
+
+NewClass.prototype.setPoints = function(setFunction){ 
+if (this instanceof Point){
+return [setFunction(this)]; 
+}
+var transformedPoints = setPoints(this.points, setFunction); 
+return transformedPoints 
+}
+
+// NewClass.translate(dx, dy) translates all Point objects in this .points 
+NewClass.prototype.translate = function(dx, dy){
+var transformedPoints = this.setPoints(function(point){
+point.coordinate[0] += dx; 
+point.coordinate[1] += dy; 
+return point 
+}); 
+return transformedPoints 
+}
+NewClass.prototype.contains = function(x, y){ // renders on overlaying testCanvas then sees if point (x, y) is non-transparent there 
+if(isNaN(x) || isNaN(y)){return} 
+var isBezier; 
+testCanvas.style.display = "visible"; 
+var context = testCanvas.getContext("2d"); 
+clearCanvas(testCanvas)
+this.render(testCanvas); 
+
+var pixelData = context.getImageData(x, y, 1, 1); 
+
+testCanvas.style.display = "none"; 
+var pixels = pixelData.data; 
+
+return pixels[3] != 0 // test if transparent (i.e. if alpha channel is zero) 
+}
+}
+
+
+
+
+// define extrapolation between two objects 
+Number.extrapolate = function(startNumber, endNumber, extrapolation_parameter){ 
+var extrapolated_value = startNumber*(1 - extrapolation_parameter) + endNumber*extrapolation_parameter; 
+return extrapolated_value // calculate extrapolated value  
+} 
+Array.extrapolate = function(startArray, endArray, extrapolation_parameter){
+var extrapolatedArray = []; 
+
+for (var index = 0; index < endArray.length; index ++){
+var startObject = startArray[index]; 
+var endObject = endArray[index]; 
+
+if (startObject == null || endObject == null){continue}
+var startConstructor = startObject.constructor; 
+var endConstructor = endObject.constructor; 
+
+if (startConstructor == endConstructor && startConstructor && startConstructor.extrapolate){
+var extrapolated_val = startConstructor.extrapolate(startObject, endObject, extrapolation_parameter); 
+extrapolatedArray.push(extrapolated_val); 
+}
+else {
+extrapolatedArray.push(startObject); 
+}
+} 
+return extrapolatedArray
+} 
+Object.extrapolate = function(startState, endState, extrapolation_parameter){ 
+
+var extrapolatedState = {}; 
+current_state = extrapolatedState; 
+for (var attribute_name in endState){ 
+
+var startStateAttribute = startState[attribute_name]; 
+var endStateAttribute = endState[attribute_name]; 
+
+if (startStateAttribute == null || startStateAttribute == undefined || endStateAttribute == null || endStateAttribute == undefined){
+extrapolatedState[attribute_name] = startStateAttribute; 
+current_state = extrapolatedState; 
+continue
+}
+extrapolatedState[attribute_name] = extrapolate(startStateAttribute, endStateAttribute, extrapolation_parameter); 
+current_state = extrapolatedState; 
+}
+
+return extrapolatedState 
+}
+String.prototype.extrapolate = function(){ // for colours as hex strings 
+
+}
+function extrapolate(startState, endState, extrapolation_parameter){ 
+if (startState === undefined || startState === null || endState === undefined || startState === null){return startState};
+var startConstructor = startState.constructor; 
+var endConstructor = endState.constructor; 
+if (startConstructor && endConstructor && startConstructor === endConstructor && startConstructor.extrapolate){ 
+//alert('extrapolate: startConstructor = ' + startConstructor); 
+return startConstructor.extrapolate(startState, endState, extrapolation_parameter) 
+}
+else {
+return startState 
+}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+                               // define classes 
+                               // define fillShape method which fills with pattern/gradient relative to instance.points.anchorPoint (if defined)
+                               CanvasRenderingContext2D.prototype.fillShape = function(instance){ // if anchor instance.points.anchorPoint not defined then fills normally, else fills relative to anchorPoint 
+                               var anchorPointCoord = instance && instance.points && instance.points.anchorPoint && instance.points.anchorPoint.coordinate; 
+                               if(anchorPointCoord){this.translate(anchorPointCoord[0], anchorPointCoord[1])};
+                               this.fill(); 
+                               if(anchorPointCoord){this.translate(-anchorPointCoord[0], -anchorPointCoord[1])};
+                               }
+                               CanvasRenderingContext2D.prototype.fillTextPattern = function(instance, x, y){ // if anchor instance.points.anchorPoint not defined then fills normally, else fills relative to anchorPoint 
+                               var anchorPointCoord = instance && instance.points && instance.points.anchorPoint && instance.points.anchorPoint.coordinate; 
+                               if(anchorPointCoord){
+                               this.translate(anchorPointCoord[0], anchorPointCoord[1])
+                               this.fillText(instance.string, x - anchorPointCoord[0], y - anchorPointCoord[1]); 
+                               this.translate(-anchorPointCoord[0], -anchorPointCoord[1]);
+                               }
+                               else{this.fillText(instance.string, x, y); };
+                               }
+                               // Define Point class 
+                               createSubClass({
+                               'class_name': 'Point', 
+                               'defaultAttributes': {
+                               'coordinate': [500, 400], 
+                               'size': 20, 
+                               'style': {
+                               'lineWidth': 1, 
+                               'fillStyle': 'white'
+                               }, 
+                               'highlightStyle': {
+                               'lineWidth': 50
+                               }
+                               }
+                               }); 
+                               Point.prototype.draw = function(context){
+                               var coordinate = this.coordinate; 
+                               var size = this.size; 
+                               if(!coordinate || !size){return}; 
+                               context.beginPath(); 
+                               if (size <= 0){size = 0}; 
+                               context.arc(coordinate[0], coordinate[1], size/2, 0, 2 * Math.PI, false);
+                               context.stroke(); 
+                               context.fillShape(this); 
+                               } 
+                               Point.prototype.contains = function(x, y){
+                               var coordinate = this.coordinate; 
+                               var size = this.size; 
+                               if(!coordinate || !size){return}; 
+                               return (x > coordinate[0] - size/2 && x < coordinate[0] + size/2 && y > coordinate[1] - size/2 && y < coordinate[1] + size/2) 
+                               } 
+
+
+
+
+
+
+
+
+
+                               // define Path class 
+                               createSubClass({
+                               'class_name': 'Path', 
+                               'defaultAttributes': { 
+                               'style': {
+                               'strokeStyle': '#000', 
+                               'lineWidth': '20'
+                               }
+                               }
+                               }); 
+                               // override dummy draw method 
+                               Path.prototype.draw = function(context){ 
+                               var points = this.points; 
+                               if (!points){return} 
+
+                               context.beginPath(); 
+                               context.moveTo(points[0].coordinate[0], points[0].coordinate[1]); 
+                               for (n = 1; n < this.points.length; n ++){ 
+                               context.lineTo(this.points[n].coordinate[0], this.points[n].coordinate[1]); 
+                               }; 
+                               context.stroke(); 
+                               }; 
+                               // override contains(x, y) method 
+                               // create function which defines if point (x, y) is contained within a line segment given by endpoints = [[x1, y1], [x2, y2]] and lineWidth 
+                               function dist_Rectangled_to_line_segment(x, y, end_points){ // gets nearest distance Rectangled from (x, y) to line with end_points = [[x1, y1], [2, y2]]
+                               var x1 = end_points[0][0], y1 = end_points[0][1], x2 = end_points[1][0], y2 = end_points[1][1]; 
+                               px = x2 - x1; 
+                               py = y2 - y1; 
+                               r12_Rectangled = px*px + py*py // dist Rectangled from r1 to r2 
+                               u = ((x - x1) * px + (y - y1) * py) / r12_Rectangled; // vector from r1 to r2 but stopping at point which is closest point divided by dist from r1 to r2 
+                               // truncate nearest point to end points r1 and r2 for finite line segment 
+                               if (u > 1){ 
+                                 u = 1
+                               }
+                               else if (u < 0){ 
+                               u = 0
+                               }
+                               // get absolute position vector for nearest point on line segment 
+                               x3 = x1 + u * px; 
+                               y3 = y1 + u * py; 
+                               // get vector from nearest point on line segment to point 
+                               dx = x3 - x; 
+                               dy = y3 - y;
+                               dist_Rectangled = dx*dx + dy*dy; 
+                               return dist_Rectangled 
+                               }
+                               function lineContains(linePoints, lineWidth, x, y){ // linePoints = [[startX, startY], [endX, endY]] 
+                               var dist_Rectangled = dist_Rectangled_to_line_segment(x, y, linePoints); 
+                               return dist_Rectangled <= lineWidth*lineWidth/4
+                               }
+                               Path.prototype.contains = function(x, y){ // returns true if (x,y) lies on path given by points = [[x0, y0], [x1, y1], ...], returns false otherwise. 
+                               var lineWidth = (this.style && this.style.lineWidth || 0), points = this.points; 
+                               for (var pointIndex = 0; pointIndex < points.length - 1; pointIndex ++){
+                               var lineStartPointCoord = points[pointIndex].coordinate; 
+                               var lineEndPointCoord = points[pointIndex + 1].coordinate; 
+                               var contains = lineContains([lineStartPointCoord, lineEndPointCoord], lineWidth, x, y) 
+                               if (contains){return true}
+                               }; 
+                               return false 
+                               } 
+
+
+                               // Define Rectangle class 
+                               createSubClass({
+                               'class_name': 'Rectangle'
+                               }); 
+                               Rectangle.prototype.draw = function(context){
+                               var points = this.points; 
+                               if (!points){return} 
+                               var topLeftPoint = points['topLeft']; 
+                               var bottomRightPoint = points['bottomRight']; 
+                               var x = topLeftPoint.coordinate[0]; 
+                               var y = topLeftPoint.coordinate[1]; 
+                               var width = bottomRightPoint.coordinate[0] - x; 
+                               var height = bottomRightPoint.coordinate[1] - y; 
+                               context.beginPath(); 
+                               context.moveTo(x, y); 
+                               context.lineTo(x + width, y); 
+                               context.lineTo(x + width, y + height); 
+                               context.lineTo(x, y + height); 
+                               context.closePath(); 
+                               context.stroke(); 
+                               context.fillShape(this); 
+                               } 
+                               function polygonContains(x, y, pointsArray){ // returns true if (x,y) lies inside polygon given by pointsArray = [[x0, y0], [x1, y1], ...], returns false otherwise. 
+                               var i, j, contains = false, num_points = pointsArray.length; 
+                               for (i = 0, j = num_points - 1; i < num_points; j = i++) { 
+                               if ((((pointsArray[i][1] <= y) && (y < pointsArray[j][1])) || ((pointsArray[j][1] <= y) && (y < pointsArray[i][1]))) && (x < (pointsArray[j][0] - pointsArray[i][0]) * (y - pointsArray[i][1])/(pointsArray[j][1] - pointsArray[i][1]) + pointsArray[i][0])){ 
+                               contains = !contains;
+                               }
+                               }
+                               return contains;    
+                               }
+                               Rectangle.prototype.contains = function(x, y){ // returns true if (x,y) lies inside polygon given by points = [[x0, y0], [x1, y1], ...], returns false otherwise. 
+                               var points = this.points; 
+                               var topLeftPoint = points['topLeft']; 
+                               var bottomRightPoint = points['bottomRight'];   
+                               // top left corner coordinate 
+                               var rect_x = topLeftPoint.coordinate[0]; 
+                               var rect_y = topLeftPoint.coordinate[1]; 
+
+                               var width = bottomRightPoint.coordinate[0] - rect_x; 
+                               var height = bottomRightPoint.coordinate[1] - rect_y; 
+                               var lineWidth = parseInt(this.style && this.style.lineWidth || 0); 
+
+                               // calculate rectangle corner coordinates taking into account line width, +ve. for 'normal' left corner to LHS of right corner, but negative otherwise 
+                               var lineWidthXOffsetSign = (width >= 0) && (1) || (width <= 0) && (-1); 
+                               var lineWidthYOffsetSign = (height >= 0) && (1) || (height <= 0) && (-1); 
+
+                               // corner points going clockwise, starting with top left corner 
+
+                               var pointsArray = [[rect_x - lineWidthXOffsetSign*lineWidth/2, rect_y - lineWidthYOffsetSign*lineWidth/2], [rect_x + width + lineWidthXOffsetSign*lineWidth/2, rect_y - lineWidthYOffsetSign*lineWidth/2], [rect_x + width + lineWidthXOffsetSign*lineWidth/2, rect_y + height + lineWidthYOffsetSign*lineWidth/2], [rect_x - lineWidthXOffsetSign*lineWidth/2, rect_y + height + lineWidthYOffsetSign*lineWidth/2]]; 
+                               return polygonContains(x, y, pointsArray) 
+                               } 
+
+
+
+
+
+
+                               // define Polygon class 
+                               createSubClass({
+                               'class_name': 'Polygon', 
+                               'defaultAttributes': { 
+                               'style': {
+                               'fillStyle': '#000', 
+                               'strokeStyle': '#000', 
+                               'lineWidth': '30'
+                               }
+                               }
+                               }); 
+                               // override dummy draw method 
+                               Polygon.prototype.draw = function(context){ 
+                               var vertices = this.points && this.points.vertices; 
+                               if (!vertices){return} 
+                               context.beginPath(); 
+                               context.moveTo(vertices[0].coordinate[0], vertices[0].coordinate[1]); 
+                               for (n = 1; n < vertices.length; n ++){ 
+                               context.lineTo(vertices[n].coordinate[0], vertices[n].coordinate[1]); 
+                               }; 
+                               context.closePath(); 
+                               context.stroke(); 
+                               context.fillShape(this); 
+                               }; 
+                               Polygon.prototype.contains = function(x, y){ // returns true if (x,y) lies inside polygon given by this.points = [point0, point1, ...], returns false otherwise. 
+                               var i, j, contains = false, vertices = this.points.vertices, num_vertices = vertices.length; 
+                               for (i = 0, j = num_vertices - 1; i < num_vertices; j = i++) { 
+                               if ((((vertices[i].coordinate[1] <= y) && (y < vertices[j].coordinate[1])) || ((vertices[j].coordinate[1] <= y) && (y < vertices[i].coordinate[1]))) && (x < (vertices[j].coordinate[0] - vertices[i].coordinate[0]) * (y - vertices[i].coordinate[1])/(vertices[j].coordinate[1] - vertices[i].coordinate[1]) + vertices[i].coordinate[0])){ 
+                               contains = !contains;
+                               }
+                               }
+                               return contains;
+                               } 
+
+
+
+
+
+
+
+                               // define Circle class 
+                               createSubClass({
+                               'class_name': 'Circle', 
+                               'defaultAttributes': { 
+                               'style': {
+                               'fillStyle': '#0aF', 
+                               'strokeStyle': '#000', 
+                               'lineWidth': '24'
+                               }, 
+                               'radius': 150 
+                               }
+                               }); 
+                               // override dummy draw method 
+                               Circle.prototype.draw = function(context){ 
+                               var centrePoint = this.points['centre']//this.points[0]; // points = [[centreX, centreY], [radialPointX, radialPointY]] 
+                               var radialPoint = this.points['radialPoint']//[1]; 
+                               if (radialPoint){ // if radial point specified 
+                               var dx = radialPoint.coordinate[0] - centrePoint.coordinate[0]; 
+                               var dy = radialPoint.coordinate[1] - centrePoint.coordinate[1]; 
+                               this.radius = Math.sqrt(dx*dx + dy*dy); 
+                               }
+                               var radius = this.radius; 
+                               if (!centrePoint || (!radius && radius != 0)){return} 
+
+                               context.beginPath(); 
+                               if (radius <= 0){radius = 0}; 
+                               context.arc(centrePoint.coordinate[0], centrePoint.coordinate[1], radius, 0, 2 * Math.PI, false);
+                               context.stroke(); 
+                               context.fillShape(this); 
+                               }; 
+                               Circle.prototype.contains = function(x, y){ // returns true if (x,y) lies inside circle returns false otherwise. 
+                               var xRel = x - this.points['centre'].coordinate[0]//this.points[0].coordinate[0]; 
+                               var yRel = y - this.points['centre'].coordinate[1]//this.points[0].coordinate[1]; 
+                               var lineWidth = parseInt(this.style && this.style.lineWidth || 0); 
+                               var doesContain = xRel*xRel + yRel*yRel < (this.radius + lineWidth/2)*(this.radius + lineWidth/2); 
+                               //status_div.innerHTML = 'xRel = ' + xRel + '<br>' + doesContain; 
+                               return doesContain 
+                               } 
+
+
+
+
+
+
+
+                               // define BezierCurve class 
+                               createSubClass({
+                               'class_name': 'BezierCurve',
+                               'defaultAttributes': { 
+                               'style': {
+                               'fillStyle': '#0aF', 
+                               'strokeStyle': '#000', 
+                               'lineWidth': '24'
+                               }, 
+                               'points': [
+                               new Point({'coordinate': [20, 20]}), 
+                               new Point({'coordinate': [20, 100]}), 
+                               new Point({'coordinate': [200, 100]}), 
+                               new Point({'coordinate': [200, 20]})
+                               ] 
+                               }
+                               }); 
+                               BezierCurve.prototype.draw = function(context){ 
+                               var points = this.points; 
+                               var startPoint = points[0]; // points = [[centreX, centreY], [radialPointX, radialPointY]] 
+                               if (!points){return} 
+
+                               context.beginPath(); 
+                               context.moveTo(startPoint.coordinate[0], startPoint.coordinate[1]); 
+                               var bezierArgsArray = []; 
+                               for (var point_index = 1; point_index < points.length; point_index ++){ 
+                               var point = points[point_index]; 
+                               bezierArgsArray.push(point.coordinate[0]); 
+                               bezierArgsArray.push(point.coordinate[1]) 
+                               }; 
+                               //Function('var context = canvas.getContext("2d"); context.bezierCurveTo(' + bezierArgsArray + ')')(); 
+                               context.bezierCurveTo.apply(context, bezierArgsArray)
+                               context.stroke(); 
+                               };
+
+                               //BezierCurve.prototype.contains = function(){
+                               //return false; 
+                               //} 
+
+
+
+
+
+
+                               // define QuadraticCurve class 
+                               createSubClass({
+                               'class_name': 'QuadraticCurve', 
+                               'defaultAttributes': { 
+                               'style': {
+                               'fillStyle': '#0aF', 
+                               'strokeStyle': '#000', 
+                               'lineWidth': '24'
+                               }, 
+                               'points': [
+                               new Point({'coordinate': [20, 20]}), 
+                               new Point({'coordinate': [20, 100]}), 
+                               new Point({'coordinate': [230, 300]})
+                               ] 
+                               }
+                               }); 
+                               QuadraticCurve.prototype.draw = function(context){ 
+                               var points = this.points; 
+                               var startPoint = points[0]; // points = [[centreX, centreY], [radialPointX, radialPointY]] 
+                               if (!points){return} 
+
+                               context.beginPath(); 
+                               context.moveTo(startPoint.coordinate[0], startPoint.coordinate[1]); 
+                               var bezierArgsArray = []; 
+                               for (var point_index = 1; point_index < points.length; point_index ++){ 
+                               var point = points[point_index]; 
+                               bezierArgsArray.push(point.coordinate[0]); 
+                               bezierArgsArray.push(point.coordinate[1]) 
+                               }; 
+                               //Function('var context = canvas.getContext("2d"); context.quadraticCurveTo(' + bezierArgsArray + ')')(); 
+                               context.quadraticCurveTo.apply(context, bezierArgsArray)
+                               context.stroke(); 
+                               }; 
+
+
+
+
+
+
+
+
+
+
+
+
+                               // define Text class 
+                               createSubClass({
+                               'class_name': 'Text', 
+                               'defaultAttributes': { 
+                               'style': {
+                               'font': '100px Arial'
+                               }, 
+                               'string': 'Hello'
+                               }
+                               }); 
+                               Text.prototype.draw = function(context){ 
+                               var points = this.points; 
+                               if (!points){return} 
+
+                               var x = points['bottomLeft'].coordinate[0]; // top-left position of image 
+                               var y = points['bottomLeft'].coordinate[1]; // bottom-right position of image  
+
+                               context.fillTextPattern(this, x, y); 
+                               }
+                               //Text.prototype.contains = function(){}
+
+
+
+                               // create event handlers for canvas which trigger corresponding events bound to subclass instances. 
+                               function getHandlerFunction(event_handler_name){
+                               return function (ev){ 
+                               if (event_handler_name == 'touchstart'){
+                               canvas.currently_touching = true 
+                               }
+                               ev = ev || event; 
+                               ev.preventDefault(); // stops touch screen sliding about! 
+                               var x = ev.clientX /* non-touchscreen */ || (ev.touches && ev.touches[0] && ev.touches[0].pageX) /* touchstart or touchmove event */ || (ev.changedTouches && ev.changedTouches[0].clientX) /* touchend event */; 
+                               var y = ev.clientY /* non-touchscreen */ || (ev.touches && ev.touches[0] && ev.touches[0].pageY) /* touchstart or touchmove event */|| (ev.changedTouches && ev.changedTouches[0].clientY) /* touchend event */; 
+                               var relX = x - parseInt(canvas.style.left); 
+                               var relY = y - parseInt(canvas.style.top); 
+                               // get and handle all events for instances bounding touch point, then clear canvas and re-render all instances 
+                               Geometry.instanceFromPoint(relX, relY, event_handler_name); // instances which bound point 
+                               // if touchend has occured on canvas then record this in canvas attribute for reference later by Geometry instance event handler so as to cancel touchmove event in Geometry instances so a re-entering touchmove event is cancelled. 
+                               if (event_handler_name == 'touchend'){ 
+                               canvas.currently_touching = false; 
+                               Geometry.instance_with_focus = undefined; 
+                               }
+                               }; 
+                               }
+                               event_handler_dict = {'touchstart': 'touchstart', 'mousedown': 'touchstart', 'touchmove': 'touchmove', 'mousemove': 'touchmove', 'touchend': 'touchend', 'mouseup': 'touchend'} // maps event name on canvas to event handler method name of Polygon class 
+                               for (var event_name in event_handler_dict){ 
+                               var event_handler_name = event_handler_dict[event_name]; 
+                               var handlerFunction = getHandlerFunction(event_handler_name); 
+                               canvas.addEventListener(event_name, handlerFunction); 
+                               }
+                               // if mouse up outside canvas then lose focus on instance and log as canvas no longer experiencing a touch event 
+                               window.addEventListener('mouseup', function(ev){
+                               Geometry.instance_with_focus = undefined; 
+                               canvas.currently_touching = false; 
+                               }); 
+                               window.addEventListener('touchend', function(ev){
+                               Geometry.instance_with_focus = undefined; 
+                               canvas.currently_touching = false; 
+                               }); 
+                               // continuously render geometries 
+                               function animate(){
+                               Geometry.render(); 
+                               setTimeout(animate, 0); 
+                               }
+                               animate(); 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                               //////////////////////// create test instances /////////////////////////
+
+                               var pnts = [new Point({
+                               'coordinate': [0, 0], 
+                               })
+                               , 
+                               new Point({'coordinate': [200, 100]}), 
+                               new Point({'coordinate': [100, 200]}), 
+                               new Point({'coordinate': [0, 100]})
+                               ]; 
+                               var poly = new Polygon({
+                               'points': {'vertices': pnts}, 
+                               'style': {
+                               'fillStyle': 'rgba(255, 0, 0, 0.5)'
+                               }
+                               }); 
+
+
+
+
+
+
+
+
+var rect = new Rectangle({ 
+  'style': {
+    'strokeStyle': 'blue', 
+    'fillStyle': 'green'
+  }, 
+  'image': {
+    //'src': "http://worldsoccertalk.com/wp-content/uploads/2009/01/cristiano-ronaldo-sporting-lisbon.jpg", 
+    'name': "wallpaper"
+  }, 
+  'points': {
+    'topLeft': new Point({'coordinate': [300, 100]}), 
+    'bottomRight': new Point({'coordinate': [450, 200]}), 
+    'anchorPoint': new Point({'coordinate': [290, 90]})
+  } 
+}); 
+
+
+
+var circ = new Circle({
+  'points': {
+    'centre': new Point({'coordinate': [200, 250]}), 
+    'radialPoint': new Point({'coordinate': [230, 250]}), 
+    'anchorPoint': new Point({'coordinate': [200, 250]})
+  }
+})
+
+
+
+var pnts2 = [
+  new Point({
+    'coordinate': [300, 250]
+  }), 
+  new Point({
+    'coordinate': [80, 260]
+  }), 
+  new Point({
+    'coordinate': [15, 260]
+  }), 
+  new Point({
+    'coordinate': [300, 200]
+  })
+] 
+var poly2 = new Polygon({
+  'points': {
+    'vertices': pnts2, 
+    'anchorPoint': new Point({
+      'coordinate': [300, 250]
+    })
+  }, 
+  'style': {
+    'fillStyle': 'rgba(0, 255, 0, 0.5)',
+    'lineWidth': '10', 
+    'strokeStyle': '#FF0'
+  }
+}); 
+poly2.morph({
+  'points': {
+    'vertices': [
+    {'coordinate': [222, 500]}, 
+    {'coordinate': [60, 400]}, 
+    null
+    ]
+  }
+}, 10, motionStyles.getDampedHarmonic(5.5, 0.1)
+); 
+
+
+
+var pnts3 = [
+  new Point({
+    'coordinate': [20, 20],
+  }), 
+  new Point({'coordinate': [70, 30]}), 
+  new Point({'coordinate': [120, 20]}), 
+  new Point({'coordinate': [240, 50]})
+] 
+
+var path = new Path({
+  'points': pnts3
+}); 
+
+
+
+
+var text = new Text({ 
+  'points': {
+    'bottomLeft': new Point({'coordinate': [70, 150]})
+  }, 
+  'string': 'Hello World!'
+}) 
+var text2 = new Text({ 
+  'points': {
+    'bottomLeft': new Point({'coordinate': [10, 50]}), 
+    'anchorPoint': new Point({'coordinate': [10, 50]})
+  }, 
+  'string': 'Yo Planet!'
+}) 
+
+
+
+var bezCurve = new BezierCurve(); 
+var quadCurve = new QuadraticCurve(); 
+
+Geometry.enableDraggable(); 
+
+
+var p = new Point({
+  'coordinate': [300, 300], 
+  'size': 30, 
+  'touchstart' : function(x, y){
+    if (this.popped_out){
+      this.morph({'size': 30}, 1, motionStyles.getDampedHarmonic(5.5, 0.1)); 
+      this.popped_out = false
+    }
+    else{ 
+      this.morph({'size': 100}, 1, motionStyles.getDampedHarmonic(5.5, 0.1)); 
+      this.popped_out = true; 
+    }
+  }
+});
+      </script>
+  </body>
+</html>
