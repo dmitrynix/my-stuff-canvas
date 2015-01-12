@@ -101,6 +101,20 @@
             Draw();
 
             e.stopPropagation();
+          } else {
+            var pos = findPos(this)
+              , mouseXY = [e.pageX - pos.x, e.pageY - pos.y]
+            ;
+
+            if (   mouseXY[0] > imageXY.x
+                && mouseXY[0] < (imageXY.x + image.width)
+                && mouseXY[1] > imageXY.y
+                && mouseXY[1] < (imageXY.y + image.height)) {
+
+              $("canvas").addClass("dragging");
+            } else {
+              $("canvas").removeClass("dragging");
+            }
           }
         }
 
