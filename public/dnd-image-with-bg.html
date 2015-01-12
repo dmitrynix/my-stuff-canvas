@@ -4,9 +4,13 @@
     <meta charset="UTF-8">
     <title>Drag and Drop image</title>
     <script src="/js/jquery-2.1.1.min.js"></script>
+    <script src="/js/find_position.js"></script>
     <style>
       canvas {
         background:url(/images/Landscape.png);
+      }
+      canvas.dragging {
+        cursor: pointer;
       }
     </style>
   </head>
@@ -17,25 +21,14 @@
     <canvas id="myCanvas" width="800" height="490"></canvas>
 
     <script>
+      // function findPos(obj) from find_position.js
       window.onload = function () {
-        function findPos(obj) {
-          var curleft = 0, curtop = 0;
-
-          if (obj.offsetParent) {
-            do {
-              curleft += obj.offsetLeft;
-              curtop += obj.offsetTop;
-            } while (obj =
-                obj.offsetParent);
-            return { x: curleft, y: curtop };
-          }
-          return undefined;
-        }
-
         /**
         * This draws the image to the canvas
         */
         function Draw() {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+
           //Draw a red rectangle around the image
           if (dragging) {
             context.strokeStyle = 'red';
@@ -69,15 +62,11 @@
 
         function onmouseup(e) {
           dragging = false;
+          Draw();
+          $("canvas").removeClass("dragging");
         }
 
         function onmousedown(e) {
-          dragging = true;
-          //if (dragging) {
-          //  Draw();
-          //  return;
-          //}
-
           var pos = findPos(this)
             , mouseXY = [e.pageX - pos.x, e.pageY - pos.y]
           ;
@@ -87,6 +76,8 @@
               && mouseXY[1] > imageXY.y
               && mouseXY[1] < (imageXY.y + image.height)) {
 
+            dragging = true;
+            $("canvas").addClass("dragging");
             originalMouseX = mouseXY[0];
             originalMouseY = mouseXY[1];
             offsetX        = mouseXY[0] - imageXY.x;
@@ -107,7 +98,6 @@
             imageXY.x = originalMouseX + diffX - offsetX;
             imageXY.y = originalMouseY + diffY - offsetY;
 
-            context.clearRect(0, 0, canvas.width, canvas.height);
             Draw();
 
             e.stopPropagation();
