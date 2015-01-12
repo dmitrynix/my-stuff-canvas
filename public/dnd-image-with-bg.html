@@ -9,8 +9,11 @@
       canvas {
         background:url(/images/Landscape.png);
       }
-      canvas.dragging {
-        cursor: pointer;
+      canvas.grabbing {
+        cursor: grabbing;
+      }
+      canvas.grab {
+        cursor: grab;
       }
     </style>
   </head>
@@ -23,6 +26,15 @@
     <script>
       // function findPos(obj) from find_position.js
       window.onload = function () {
+        function setCursorGrabbing() {
+          $("canvas").removeClass("grab").addClass("grabbing");
+        }
+        function setCursorGrab() {
+          $("canvas").removeClass("grabbing").addClass("grab");
+        }
+        function setCursorDefault() {
+          $("canvas").removeClass("grab grabbing");
+        }
         /**
         * This draws the image to the canvas
         */
@@ -63,10 +75,12 @@
         function onmouseup(e) {
           dragging = false;
           Draw();
-          $("canvas").removeClass("dragging");
+          setCursorDefault();
         }
 
         function onmousedown(e) {
+          setCursorDefault();
+
           var pos = findPos(this)
             , mouseXY = [e.pageX - pos.x, e.pageY - pos.y]
           ;
@@ -77,7 +91,7 @@
               && mouseXY[1] < (imageXY.y + image.height)) {
 
             dragging = true;
-            $("canvas").addClass("dragging");
+            setCursorGrabbing();
             originalMouseX = mouseXY[0];
             originalMouseY = mouseXY[1];
             offsetX        = mouseXY[0] - imageXY.x;
@@ -111,9 +125,9 @@
                 && mouseXY[1] > imageXY.y
                 && mouseXY[1] < (imageXY.y + image.height)) {
 
-              $("canvas").addClass("dragging");
+              setCursorGrab();
             } else {
-              $("canvas").removeClass("dragging");
+              setCursorDefault();
             }
           }
         }
